@@ -1,25 +1,104 @@
-name: CI
 
-on: [push, pull_request]
+name: Smart CI - Change Impact Analysis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
-  build:
+
+  # Step 1: Detect changed files
+  changes:
     runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
+    outputs:
+      cart: ${{ steps.filter.outputs.cart }}
+      pricing: ${{ steps.filter.outputs.pricing }}
+      inventory: ${{ steps.filter.outputs.inventory }}
+      all: ${{ steps.filter.outputs.all }}
 
-      - uses: actions/setup-python@v5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect changed files
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filters: |
+            cart:
+              - 'src/cart.py'
+              - 'tests/test_cart.py'
+
+            pricing:
+              - 'src/pricing.py'
+              - 'tests/test_pricing.py'
+
+            inventory:
+              - 'src/inventory.py'
+              - 'tests/test_inventory.py'
+
+            all:
+              - 'requirements.txt'
+              - 'pytest.ini'
+              - 'src/__init__.py'
+              - '.github/workflows/ci.yml'
+              - 'tests/conftest.py'
+
+  # Step 2: Run only affected tests
+  test:
+    needs: changes
+    runs-on: ubuntu-latest
+
+    if: |
+      needs.changes.outputs.cart == 'true' ||
+      needs.changes.outputs.pricing == 'true' ||
+      needs.changes.outputs.inventory == 'true' ||
+      needs.changes.outputs.all == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Cache pip packages
+
+      # Lab 3: Pip dependency caching
+      - name: Cache pip dependencies
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-${{ hashFiles('requirements.txt') }}-
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
 
-      - run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Run tests
-        run: pytest -v
-        
+      # Run cart tests only when required
+      - name: Run Cart Tests
+        if: needs.changes.outputs.cart == 'true' || needs.changes.outputs.all == 'true'
+        run: pytest -v tests/test_cart.py
+
+      # Run pricing tests only when required
+      - name: Run Pricing Tests
+        if: needs.changes.outputs.pricing == 'true' || needs.changes.outputs.all == 'true'
+        run: pytest -v tests/test_pricing.py
+
+      # Run inventory tests only when required
+      - name: Run Inventory Tests
+        if: needs.changes.outputs.inventory == 'true' || needs.changes.outputs.all == 'true'
+        run: pytest -v tests/test_inventory.py
+
+      - name: Show completion
+        run: echo "Selected tests completed successfully"
