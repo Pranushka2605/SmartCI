@@ -18,3 +18,7 @@ def test_discount_invalid():
 
 def test_tax_default():
     assert add_tax(100) == 118.0
+
+
+def test_tax_percentage_rate():
+    assert add_tax(100, 18) == 118.0
