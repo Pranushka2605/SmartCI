@@ -1,5 +1,4 @@
-
-name: Dynamic Test Subset Routing
+name: Assignment 4_3 - Add LLM Log Summarisation
 
 on:
   push:
@@ -51,9 +50,17 @@ jobs:
 
       - name: Run selected tests
         run: |
-          if [ -s selected_tests.txt ]; then
-            pytest -v $(cat selected_tests.txt)
-          else
-            echo "No mapped source changes. Running full test suite."
-            pytest -v
+          if [ ! -f build.log ]; then
+            echo "No build log available" > build.log
           fi
+          python scripts/summarize_logs.py --input build.log
+
+       - name: Upload log analysis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-error-analysis
+          path: |
+            build.log
+            llm_prompt.txt
+          if-no-files-found: warn
