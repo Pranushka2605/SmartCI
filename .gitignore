@@ -1,3 +1,8 @@
 .pytest_cache/
 _pycache_/
 *.pyc
+
+changed_files.txt
+selected_tests.txt
+changed_files.txt
+selected_tests.txt
