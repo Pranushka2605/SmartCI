@@ -41,11 +41,11 @@ jobs:
             echo "No build log available" > build.log
           fi
 
-      - name: Upload log analysis
+       - name: Upload log analysis
         if: always()
         uses: actions/upload-artifact@v4
         with:
-      - name: ci-error-analysis
+          name: ci-error-analysis
           path: |
             build.log
             llm_prompt.txt
