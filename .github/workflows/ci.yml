@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+
   pull_request:
     branches:
       - main
@@ -25,7 +26,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest
 
       - name: Run tests
         run: |
@@ -35,17 +35,16 @@ jobs:
       - name: Prepare LLM log summary
         if: always()
         run: |
-          if [ -f build.log ]; then
-            python scripts/summarize_logs.py --input build.log
-          else
+          if [ ! -f build.log ]; then
             echo "No build log available" > build.log
           fi
+          python scripts/summarize_logs.py --input build.log
 
       - name: Upload log analysis
         if: always()
         uses: actions/upload-artifact@v4
         with:
-      - name: ci-error-analysis
+          name: ci-error-analysis
           path: |
             build.log
             llm_prompt.txt

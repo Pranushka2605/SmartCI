@@ -1,91 +1,52 @@
-from pathlib import Path
-import re
 import argparse
+from pathlib import Path
 
 
-def extract_errors(log_text):
-    patterns = [
-        r"ERROR",
-        r"FAILED",
-        r"Traceback",
-        r"Exception",
-        r"AssertionError",
-        r"ModuleNotFoundError",
-        r"ImportError"
-    ]
+def summarize_logs(input_file):
+    log_path = Path(input_file)
 
-    errors = []
-
-    for line in log_text.splitlines():
-        if any(re.search(pattern, line, re.IGNORECASE)
-               for pattern in patterns):
-            errors.append(line)
-
-    return errors
-
-
-def summarize_logs(log_file):
-
-    path = Path(log_file)
-
-    if not path.exists():
-        print("Error: Log file not found.")
-        return
-
-    log_text = path.read_text(
-        encoding="utf-8",
-        errors="replace"
-    )
-
-    errors = extract_errors(log_text)
-
-    if errors:
-        result = "\n".join(errors[-30:])
-
-        prompt = f"""
-You are a CI/CD debugging assistant.
-
-Analyze the following build error logs.
-
-1. Identify the main error.
-2. Explain the likely cause.
-3. Identify the affected test or file.
-4. Suggest a possible solution.
-
-Explain in simple language.
-
-ERROR LOGS:
-{result}
-"""
+    if not log_path.exists():
+        log_content = "No build log available."
     else:
-        prompt = """
-No common error patterns were detected
-in the captured logs.
+        log_content = log_path.read_text(
+            encoding="utf-8",
+            errors="replace"
+        )
 
-Check the complete build log to confirm
-whether the build was successful.
+    prompt = f"""
+You are an expert software testing assistant.
+
+Analyze the following CI build log.
+
+Your tasks:
+1. Identify whether the tests passed or failed.
+2. Identify the errors and exceptions.
+3. Explain the possible reasons for failures.
+4. Suggest solutions to fix the errors.
+5. Provide a short summary of the build result.
+
+CI Build Log:
+{log_content}
 """
 
-    output_file = Path("llm_prompt.txt")
-
-    output_file.write_text(
+    Path("llm_prompt.txt").write_text(
         prompt,
         encoding="utf-8"
     )
 
-    print("Log analysis preparation completed.")
-    print("LLM prompt saved in llm_prompt.txt")
+    print("LLM prompt generated successfully!")
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Generate an LLM prompt from CI logs"
+    )
 
     parser.add_argument(
         "--input",
-        default="build.log"
+        required=True,
+        help="Path to the build log"
     )
 
     args = parser.parse_args()
-
     summarize_logs(args.input)
