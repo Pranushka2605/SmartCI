@@ -1,6 +1,27 @@
-import argparse
-import re
 from pathlib import Path
+import re
+import argparse
+
+
+def extract_errors(log_text):
+    patterns = [
+        r"ERROR",
+        r"FAILED",
+        r"Traceback",
+        r"Exception",
+        r"AssertionError",
+        r"ModuleNotFoundError",
+        r"ImportError",
+    ]
+
+    errors = []
+
+    for line in log_text.splitlines():
+        if any(re.search(pattern, line, re.IGNORECASE)
+               for pattern in patterns):
+            errors.append(line)
+
+    return errors
 
 
 def summarize_logs(log_file):
@@ -15,49 +36,35 @@ def summarize_logs(log_file):
         errors="ignore"
     )
 
-    patterns = re.compile(
-        r"ERROR|FAILED|Traceback|Exception|"
-        r"AssertionError|BUILD FAILED",
-        re.IGNORECASE
-    )
-
-    errors = [
-        line for line in content.splitlines()
-        if patterns.search(line)
-    ]
-
-    prompt = "LLM-Based Build/Error-Log Analysis\n\n"
+    errors = extract_errors(content)
 
     if errors:
-        prompt += "Detected errors:\n"
-        for error in errors:
-            prompt += f"- {error}\n"
+        summary = "LLM Log Summary\n\n"
+        summary += "Errors found in the build log:\n\n"
+        summary += "\n".join(errors)
     else:
-        prompt += "No common error patterns were detected.\n"
-
-    prompt += (
-        "\nPlease explain the errors, identify their "
-        "possible causes, and suggest solutions."
-    )
+        summary = "LLM Log Summary\n\n"
+        summary += "No errors found in the build log."
 
     Path("llm_prompt.txt").write_text(
-        prompt,
+        summary,
         encoding="utf-8"
     )
 
-    print("Log analysis preparation completed.")
-    print("LLM prompt saved in llm_prompt.txt")
+    print(summary)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Summarize CI build logs"
+    )
 
     parser.add_argument(
         "--input",
-        default="build.log"
+        required=True,
+        help="Path to the build log file"
     )
 
     args = parser.parse_args()
 
     summarize_logs(args.input)
-    
