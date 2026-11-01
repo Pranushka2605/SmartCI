@@ -40,7 +40,7 @@ jobs:
           fi
           python scripts/summarize_logs.py --input build.log
 
-      - name: Upload log analysis
+       - name: Upload log analysis
         if: always()
         uses: actions/upload-artifact@v4
         with:
