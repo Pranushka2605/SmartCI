@@ -1,4 +1,5 @@
-name: Assignment 4_3 - Add LLM Log Summarisation
+
+name: SmartCI - Dynamic Test Subset Routing
 
 on:
   push:
@@ -9,7 +10,7 @@ on:
       - main
 
 jobs:
-  dynamic-testing:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,7 +22,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
@@ -29,6 +30,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Detect changed files
+        shell: bash
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             git diff --name-only \
@@ -44,18 +46,25 @@ jobs:
               > changed_files.txt
           fi
 
+          echo "Changed files:"
+          cat changed_files.txt
+
       - name: Select relevant tests
         run: |
           python scripts/select_tests.py --input changed_files.txt
 
       - name: Run selected tests
         run: |
-          if [ ! -f build.log ]; then
-            echo "No build log available" > build.log
+          if [ -s selected_tests.txt ]; then
+            echo "Running selected tests:"
+            cat selected_tests.txt
+            python -m pytest -v $(cat selected_tests.txt)
+          else
+            echo "No mapped source changes. Running full test suite."
+            python -m pytest -v
           fi
-          python scripts/summarize_logs.py --input build.log
 
-       - name: Upload log analysis
+      - name: Upload log analysis
         if: always()
         uses: actions/upload-artifact@v4
         with:
