@@ -1,21 +1,23 @@
-name: Assignment 4_3 - Add LLM Log Summarisation
+
+name: Dynamic Test Subset Routing
 
 on:
   push:
     branches:
       - main
-
   pull_request:
     branches:
       - main
 
 jobs:
-  test:
+  dynamic-testing:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -27,25 +29,31 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run tests
+      - name: Detect changed files
         run: |
-          set -o pipefail
-          pytest -v 2>&1 | tee build.log
-
-      - name: Prepare LLM log summary
-        if: always()
-        run: |
-          if [ ! -f build.log ]; then
-            echo "No build log available" > build.log
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --name-only \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}" \
+              > changed_files.txt
+          elif [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            git ls-files > changed_files.txt
+          else
+            git diff --name-only \
+              "${{ github.event.before }}" \
+              "${{ github.sha }}" \
+              > changed_files.txt
           fi
-          python scripts/summarize_logs.py --input build.log
 
-       - name: Upload log analysis
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ci-error-analysis
-          path: |
-            build.log
-            llm_prompt.txt
-          if-no-files-found: warn
+      - name: Select relevant tests
+        run: |
+          python scripts/select_tests.py --input changed_files.txt
+
+      - name: Run selected tests
+        run: |
+          if [ -s selected_tests.txt ]; then
+            pytest -v $(cat selected_tests.txt)
+          else
+            echo "No mapped source changes. Running full test suite."
+            pytest -v
+          fi
