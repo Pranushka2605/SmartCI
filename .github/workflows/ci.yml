@@ -1,17 +1,52 @@
-- name: Prepare LLM log summary
+name: Assignment 4_3 - Add LLM Log Summarisation
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run tests
+        run: |
+          set -o pipefail
+          pytest -v 2>&1 | tee build.log
+
+      - name: Prepare LLM log summary
         if: always()
-        run: python scripts/summarize_logs.py --input build.log
+        run: |
+          if [ -f build.log ]; then
+            python scripts/summarize_logs.py --input build.log
+          else
+            echo "No build log available" > build.log
+          fi
 
       - name: Upload log analysis
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ci-error-analysis
+      - name: ci-error-analysis
           path: |
             build.log
             llm_prompt.txt
-            - name: Run tests
-        run: |
-          set -o pipefail
-          pytest -v 2>&1 | tee build.log
-          
+          if-no-files-found: warn
