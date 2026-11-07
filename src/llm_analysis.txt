@@ -1,0 +1,3 @@
+Summary: The run had 3 failures and 9 passes.
+The discount calculation is the shared cause.
+Subtracting the discount percentage should fix the failures.

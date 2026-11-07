@@ -58,10 +58,20 @@ jobs:
           if [ -s selected_tests.txt ]; then
             echo "Running selected tests:"
             cat selected_tests.txt
-            python -m pytest -v $(cat selected_tests.txt)
+            python -m pytest -v $(cat selected_tests.txt) 2>&1 | tee build.log
           else
             echo "No mapped source changes. Running full test suite."
-            python -m pytest -v
+            python -m pytest -v 2>&1 | tee build.log
+          fi
+      - name: Generate failure summary
+        if: failure()
+        run: |
+          echo "## CI Test Failure Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Check the build.log artifact for the test output." >> $GITHUB_STEP_SUMMARY
+          if [ -f build.log ]; then
+            echo '```text' >> $GITHUB_STEP_SUMMARY
+            tail -n 30 build.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Upload log analysis
@@ -73,3 +83,4 @@ jobs:
             build.log
             llm_prompt.txt
           if-no-files-found: warn
+          
