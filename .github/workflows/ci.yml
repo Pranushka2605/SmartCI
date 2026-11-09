@@ -63,6 +63,12 @@ jobs:
             echo "No mapped source changes. Running full test suite."
             python -m pytest -v 2>&1 | tee build.log
           fi
+      - name: Generate LLM prompt
+        if: always()
+        run: |
+          if [ -f build.log ]; then
+            python scripts/summarize_logs.py --input build.log
+          fi
       - name: Generate failure summary
         if: failure()
         run: |
